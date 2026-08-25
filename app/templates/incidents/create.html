@@ -1,0 +1,124 @@
+{% extends "base.html" %}
+
+{% block title %}Registrar Evento en Bitácora{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center justify-content-between mb-4">
+    <div>
+        <h3 class="fw-bold mb-1"><i class="bi bi-journal-plus text-warning"></i> Nuevo Registro en Bitácora</h3>
+        <p class="text-muted mb-0">Documentar un incidente, falla, mantenimiento o ventana operativa.</p>
+    </div>
+    <a href="{{ url_for('incidents.list_incidents') }}" class="btn btn-outline-secondary btn-sm">
+        <i class="bi bi-arrow-left"></i> Volver a Bitácora
+    </a>
+</div>
+
+<div class="row justify-content-center">
+    <div class="col-lg-10">
+        <div class="card-custom">
+            <div class="card-custom-body p-4">
+                <form method="POST" action="{{ url_for('incidents.create_incident') }}">
+                    <h5 class="fw-semibold text-warning mb-3"><i class="bi bi-exclamation-triangle"></i> 1. Información General del Incidente</h5>
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-4">
+                            <label class="form-label">Número de Ticket / Ref</label>
+                            <input type="text" name="ticket_ref" class="form-control form-control-dark font-monospace" placeholder="Ej: INC-2026-0819, CHG-4412">
+                        </div>
+                        <div class="col-md-8">
+                            <label class="form-label">Título del Evento *</label>
+                            <input type="text" name="title" class="form-control form-control-dark" placeholder="Ej: Caída de Queue Manager por saturación de disco /var/mqm" required>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Severidad *</label>
+                            <select name="severity" class="form-select form-select-dark">
+                                <option value="CRITICAL">CRITICAL (Impacto total a producción)</option>
+                                <option value="HIGH" selected>HIGH (Degradación severa)</option>
+                                <option value="MEDIUM">MEDIUM (Impacto parcial / No crítico)</option>
+                                <option value="LOW">LOW (Informativo / Menor)</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Estado Inicial *</label>
+                            <select name="status" class="form-select form-select-dark">
+                                <option value="OPEN">ABIERTO</option>
+                                <option value="IN_PROGRESS">EN CURSO</option>
+                                <option value="RESOLVED">RESUELTO</option>
+                                <option value="CLOSED">CERRADO</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Operador / Sysadmin Responsable *</label>
+                            <input type="text" name="operator_name" class="form-control form-control-dark" value="Felipe Lagos" required>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">Descripción Detallada del Síntoma / Alerta *</label>
+                            <textarea name="description" class="form-control form-control-dark" rows="3" placeholder="Detalle qué ocurrió, alertas recibidas de monitoreo (Dynatrace, Prometheus, logs)..." required></textarea>
+                        </div>
+                    </div>
+
+                    <h5 class="fw-semibold text-warning mb-3"><i class="bi bi-hdd-stack"></i> 2. Entidades Afectadas</h5>
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-4">
+                            <label class="form-label">Servidor Afectado</label>
+                            <select name="server_id" class="form-select form-select-dark">
+                                <option value="">-- No especificado --</option>
+                                {% for s in servers %}
+                                    <option value="{{ s.id }}">{{ s.hostname }} ({{ s.ip_address }})</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Middleware / Instancia</label>
+                            <select name="middleware_id" class="form-select form-select-dark">
+                                <option value="">-- No especificado --</option>
+                                {% for m in middlewares %}
+                                    <option value="{{ m.id }}">{{ m.name }} ({{ m.server.hostname if m.server else '' }})</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Proyecto / Negocio</label>
+                            <select name="project_id" class="form-select form-select-dark">
+                                <option value="">-- No especificado --</option>
+                                {% for p in projects %}
+                                    <option value="{{ p.id }}">{{ p.name }} ({{ p.code }})</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">Corta-Palos / Runbook Asociado (Opcional)</label>
+                            <select name="applied_runbook_id" class="form-select form-select-dark">
+                                <option value="">-- Ninguno --</option>
+                                {% for rb in runbooks %}
+                                    <option value="{{ rb.id }}">[{{ rb.category }}] {{ rb.title }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+
+                    <h5 class="fw-semibold text-warning mb-3"><i class="bi bi-tools"></i> 3. Diagnóstico y Resolución (Base de Conocimiento)</h5>
+                    <div class="row g-3 mb-4">
+                        <div class="col-12">
+                            <label class="form-label">Acciones Operativas Tomadas</label>
+                            <textarea name="actions_taken" class="form-control form-control-dark font-monospace text-light" rows="3" placeholder="1. Se revisaron logs en /u01/logs&#10;2. Se ejecutó kill -3 al PID...&#10;3. Se liberó espacio con logrotate..."></textarea>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Causa Raíz Identificada</label>
+                            <textarea name="root_cause" class="form-control form-control-dark" rows="3" placeholder="Fuga de memoria por bug en aplicación, desborde de cola, corte de red..."></textarea>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Pasos de Resolución / Recomendación Preventiva</label>
+                            <textarea name="resolution_steps" class="form-control form-control-dark" rows="3" placeholder="Cómo se solucionó definitivamente para que sirva de guía si vuelve a ocurrir..."></textarea>
+                        </div>
+                    </div>
+
+                    <div class="d-flex justify-content-end gap-2 border-top border-secondary border-opacity-25 pt-3">
+                        <a href="{{ url_for('incidents.list_incidents') }}" class="btn btn-secondary">Cancelar</a>
+                        <button type="submit" class="btn btn-warning px-4"><i class="bi bi-save"></i> Guardar en Bitácora</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

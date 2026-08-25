@@ -1,0 +1,328 @@
+{% extends "base.html" %}
+
+{% block title %}Servidor {{ server.hostname }}{% endblock %}
+
+{% block content %}
+<!-- Cabecera de Detalle -->
+<div class="d-flex align-items-center justify-content-between mb-4">
+    <div class="d-flex align-items-center gap-3">
+        <a href="{{ url_for('servers.list_servers') }}" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-arrow-left"></i> Volver
+        </a>
+        <div>
+            <div class="d-flex align-items-center gap-2">
+                <h3 class="fw-bold mb-0 text-light">{{ server.hostname }}</h3>
+                <span class="badge {% if server.environment == 'PROD' %}badge-env-prod{% elif server.environment == 'QA' %}badge-env-qa{% else %}badge-env-dev{% endif %}">
+                    {{ server.environment }}
+                </span>
+                <span class="badge {% if server.status == 'ACTIVE' %}bg-success{% else %}bg-warning text-dark{% endif %}">
+                    {{ server.status }}
+                </span>
+            </div>
+            <p class="text-muted mb-0 small">IP Principal: <code class="text-info">{{ server.ip_address }}</code> | Registrado el {{ server.created_at.strftime('%d/%m/%Y %H:%M') }}</p>
+        </div>
+    </div>
+
+    <div class="d-flex gap-2">
+        <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addMiddlewareModal">
+            <i class="bi bi-plus-circle"></i> Agregar Middleware
+        </button>
+        <a href="{{ url_for('servers.edit_server', server_id=server.id) }}" class="btn btn-outline-info btn-sm">
+            <i class="bi bi-pencil"></i> Editar Servidor
+        </a>
+        <form method="POST" action="{{ url_for('servers.delete_server', server_id=server.id) }}" onsubmit="return confirm('¿Estás seguro de eliminar este servidor? Esta acción es irreversible.');" class="d-inline">
+            <button type="submit" class="btn btn-outline-danger btn-sm">
+                <i class="bi bi-trash"></i> Eliminar
+            </button>
+        </form>
+    </div>
+</div>
+
+<div class="row g-4">
+    <!-- Columna Izquierda: Información de Hardware / SO y Middlewares -->
+    <div class="col-lg-8">
+        <!-- Tarjeta de Ficha Técnica -->
+        <div class="card-custom mb-4">
+            <div class="card-custom-header">
+                <h5 class="mb-0 fw-semibold"><i class="bi bi-cpu text-info"></i> Ficha Técnica e Infraestructura</h5>
+            </div>
+            <div class="card-custom-body">
+                <div class="row g-3">
+                    <div class="col-md-3">
+                        <small class="text-muted d-block">Sistema Operativo</small>
+                        <span class="fw-semibold">{{ server.os_name }} {{ server.os_version or '' }}</span>
+                    </div>
+                    <div class="col-md-3">
+                        <small class="text-muted d-block">Hardware / Sizing</small>
+                        <span class="fw-semibold">
+                            <i class="bi bi-cpu"></i> {{ server.cpu_cores or 'N/A' }} vCPUs | <i class="bi bi-memory"></i> {{ server.ram_gb or 'N/A' }} GB RAM
+                        </span>
+                    </div>
+                    <div class="col-md-3">
+                        <small class="text-muted d-block">Puerto SSH</small>
+                        <span class="fw-semibold font-monospace">{{ server.ssh_port }}</span>
+                    </div>
+                    <div class="col-md-3">
+                        <small class="text-muted d-block">Proyecto / Área</small>
+                        {% if server.project %}
+                            <a href="{{ url_for('projects.view_project', project_id=server.project.id) }}" class="text-info fw-semibold text-decoration-none">
+                                {{ server.project.name }}
+                            </a>
+                        {% else %}
+                            <span class="text-muted">Sin Asignar</span>
+                        {% endif %}
+                    </div>
+                    {% if server.secondary_ips %}
+                    <div class="col-12">
+                        <small class="text-muted d-block">IPs Secundarias / VIPs:</small>
+                        <code class="text-light">{{ server.secondary_ips }}</code>
+                    </div>
+                    {% endif %}
+                    {% if server.notes %}
+                    <div class="col-12">
+                        <small class="text-muted d-block">Notas Operativas:</small>
+                        <div class="p-2 rounded bg-dark border border-secondary border-opacity-25 small text-light">{{ server.notes }}</div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Middlewares y Aplicaciones Instaladas -->
+        <div class="card-custom mb-4">
+            <div class="card-custom-header">
+                <h5 class="mb-0 fw-semibold"><i class="bi bi-layers-fill text-purple"></i> Middlewares y Software Instalado</h5>
+                <span class="badge bg-secondary">{{ middlewares|length }} Instancias</span>
+            </div>
+            <div class="card-custom-body">
+                {% for m in middlewares %}
+                <div class="border border-secondary border-opacity-50 rounded p-3 mb-3 bg-dark bg-opacity-25">
+                    <div class="d-flex justify-content-between align-items-start mb-2">
+                        <div>
+                            <h6 class="fw-bold text-info mb-0">
+                                <i class="bi bi-box-seam"></i> {{ m.name }} 
+                                {% if m.version %}<span class="badge bg-secondary ms-1">v{{ m.version }}</span>{% endif %}
+                            </h6>
+                            {% if m.domain_or_instance %}
+                                <small class="text-warning">Dominio / Instancia: <strong>{{ m.domain_or_instance }}</strong></small>
+                            {% endif %}
+                        </div>
+                        <span class="badge {% if m.status == 'RUNNING' %}bg-success{% elif m.status == 'STOPPED' %}bg-danger{% else %}bg-warning text-dark{% endif %}">
+                            {{ m.status }}
+                        </span>
+                    </div>
+
+                    <div class="row g-2 small mt-2">
+                        <div class="col-md-6">
+                            <span class="text-muted">Ruta de Instalación:</span><br>
+                            <code class="text-light">{{ m.install_path }}</code>
+                        </div>
+                        {% if m.binary_path %}
+                        <div class="col-md-6">
+                            <span class="text-muted">Ruta de Binarios / Scripts:</span><br>
+                            <code class="text-light">{{ m.binary_path }}</code>
+                        </div>
+                        {% endif %}
+                        {% if m.config_path %}
+                        <div class="col-md-6">
+                            <span class="text-muted">Archivo de Configuración:</span><br>
+                            <code class="text-light">{{ m.config_path }}</code>
+                        </div>
+                        {% endif %}
+                        {% if m.ports %}
+                        <div class="col-md-3">
+                            <span class="text-muted">Puertos:</span><br>
+                            <span class="text-light">{{ m.ports }}</span>
+                        </div>
+                        {% endif %}
+                        {% if m.run_user %}
+                        <div class="col-md-3">
+                            <span class="text-muted">Usuario Ejecutor:</span><br>
+                            <span class="badge bg-dark border border-secondary font-monospace">{{ m.run_user }}</span>
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% if m.notes %}
+                    <div class="mt-2 text-muted small border-top border-secondary border-opacity-25 pt-2">
+                        <strong>Notas:</strong> {{ m.notes }}
+                    </div>
+                    {% endif %}
+                </div>
+                {% else %}
+                <div class="text-center py-4 text-muted">
+                    <i class="bi bi-box-seam fs-3 d-block mb-2"></i>
+                    No se han documentado middlewares en este servidor.
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Corta-Palos Asociados -->
+        <div class="card-custom">
+            <div class="card-custom-header">
+                <h5 class="mb-0 fw-semibold"><i class="bi bi-terminal-fill text-success"></i> Corta-Palos Aplicables a este Servidor</h5>
+            </div>
+            <div class="card-custom-body">
+                {% for rb in runbooks %}
+                <div class="mb-3">
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <div class="fw-bold text-light">
+                            [{{ rb.category }}] {{ rb.title }}
+                            {% if rb.is_dangerous %}<span class="badge bg-danger ms-1">⚠️ PELIGROSO</span>{% endif %}
+                            {% if rb.requires_sudo %}<span class="badge bg-warning text-dark ms-1">🔑 SUDO</span>{% endif %}
+                        </div>
+                    </div>
+                    {% if rb.description %}<p class="text-muted small mb-2">{{ rb.description }}</p>{% endif %}
+                    <div class="terminal-block">
+                        <div class="terminal-header">
+                            <div class="terminal-dots">
+                                <span class="terminal-dot dot-red"></span>
+                                <span class="terminal-dot dot-yellow"></span>
+                                <span class="terminal-dot dot-green"></span>
+                            </div>
+                            <button class="btn-copy" data-clipboard-text="{{ rb.command_text }}">
+                                <i class="bi bi-clipboard"></i> Copiar
+                            </button>
+                        </div>
+                        <pre class="terminal-content">{{ rb.command_text }}</pre>
+                    </div>
+                </div>
+                {% else %}
+                <div class="text-center py-3 text-muted">
+                    No hay corta-palos asignados específicamente a este host.
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Columna Derecha: Incidentes en este Servidor + Auditoría -->
+    <div class="col-lg-4">
+        <!-- Historial de Incidentes -->
+        <div class="card-custom mb-4">
+            <div class="card-custom-header">
+                <h5 class="mb-0 fw-semibold"><i class="bi bi-journal-text text-warning"></i> Incidentes en este Servidor</h5>
+            </div>
+            <div class="card-custom-body p-0">
+                <ul class="list-group list-group-flush bg-transparent">
+                    {% for inc in incidents %}
+                    <li class="list-group-item bg-transparent border-secondary border-opacity-25 px-3 py-2">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span class="badge {% if inc.severity == 'CRITICAL' %}badge-sev-critical{% elif inc.severity == 'HIGH' %}badge-sev-high{% else %}badge-sev-medium{% endif %}">
+                                {{ inc.severity }}
+                            </span>
+                            <small class="text-muted">{{ inc.occurred_at.strftime('%d/%m/%Y') }}</small>
+                        </div>
+                        <a href="{{ url_for('incidents.view_incident', incident_id=inc.id) }}" class="fw-semibold text-warning text-decoration-none d-block mt-1">
+                            {{ inc.ticket_ref or '#' ~ inc.id }}: {{ inc.title }}
+                        </a>
+                        <small class="text-muted d-block mt-1">Estado: <span class="text-light">{{ inc.status }}</span> | Op: {{ inc.operator_name }}</small>
+                    </li>
+                    {% else %}
+                    <li class="list-group-item bg-transparent text-center py-3 text-muted">Sin incidentes registrados.</li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+
+        <!-- Historial de Auditoría de este Servidor -->
+        <div class="card-custom">
+            <div class="card-custom-header">
+                <h5 class="mb-0 fw-semibold"><i class="bi bi-clock-history text-info"></i> Historial de Cambios</h5>
+            </div>
+            <div class="card-custom-body p-0">
+                <ul class="list-group list-group-flush bg-transparent">
+                    {% for log in audit_history %}
+                    <li class="list-group-item bg-transparent border-secondary border-opacity-25 px-3 py-2">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span class="badge bg-secondary">{{ log.action }}</span>
+                            <small class="text-muted">{{ log.created_at.strftime('%d/%m %H:%M') }}</small>
+                        </div>
+                        <div class="small text-light mt-1">{{ log.summary }}</div>
+                        <div class="d-flex justify-content-between align-items-center mt-1">
+                            <small class="text-muted">Por: {{ log.user_name }}</small>
+                            <button class="btn btn-link btn-sm p-0 text-decoration-none" onclick="showAuditDiff({{ log.id }})">
+                                <small>Diff</small>
+                            </button>
+                        </div>
+                    </li>
+                    {% else %}
+                    <li class="list-group-item bg-transparent text-center py-3 text-muted">Sin cambios auditados.</li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para Agregar Middleware al Servidor -->
+<div class="modal fade" id="addMiddlewareModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content card-custom">
+            <form method="POST" action="{{ url_for('servers.add_middleware', server_id=server.id) }}">
+                <div class="modal-header border-secondary">
+                    <h5 class="modal-title"><i class="bi bi-box-seam text-info"></i> Registrar Middleware en {{ server.hostname }}</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Nombre del Middleware *</label>
+                            <input type="text" name="name" class="form-control form-control-dark" placeholder="Ej: Oracle WebLogic, IBM MQ, Apache Tomcat, JBoss" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Versión</label>
+                            <input type="text" name="version" class="form-control form-control-dark" placeholder="Ej: 12.2.1.4, 9.2.0.5, 9.0.82">
+                        </div>
+                        <div class="col-md-12">
+                            <label class="form-label">Ruta de Instalación ($HOME / $BASE) *</label>
+                            <input type="text" name="install_path" class="form-control form-control-dark font-monospace" placeholder="/u01/app/oracle/middleware/wlserver_12.2" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Nombre de Dominio o Instancia</label>
+                            <input type="text" name="domain_or_instance" class="form-control form-control-dark" placeholder="Ej: domain_core_prod, QM_CORE_01">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Ruta de Binarios / Scripts de Inicio</label>
+                            <input type="text" name="binary_path" class="form-control form-control-dark font-monospace" placeholder="/u01/app/oracle/domains/domain_core/bin">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Ruta de Archivo de Configuración</label>
+                            <input type="text" name="config_path" class="form-control form-control-dark font-monospace" placeholder="/u01/app/oracle/domains/domain_core/config/config.xml">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Servicio Systemd / Init</label>
+                            <input type="text" name="service_name" class="form-control form-control-dark" placeholder="Ej: nodemanager.service">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Puertos de Escucha</label>
+                            <input type="text" name="ports" class="form-control form-control-dark" placeholder="Ej: 7001, 7002, 1414, 8080">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Usuario SO (Owner)</label>
+                            <input type="text" name="run_user" class="form-control form-control-dark" placeholder="oracle, mqm, tomcat">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Estado</label>
+                            <select name="status" class="form-select form-select-dark">
+                                <option value="RUNNING">RUNNING</option>
+                                <option value="STOPPED">STOPPED</option>
+                                <option value="DEGRADED">DEGRADED</option>
+                                <option value="UNKNOWN">UNKNOWN</option>
+                            </select>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">Notas Adicionales (JVM Flags, Parámetros, etc.)</label>
+                            <textarea name="notes" class="form-control form-control-dark" rows="2" placeholder="Flags JVM, memoria asignada, drivers JDBC especiales..."></textarea>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer border-secondary">
+                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary btn-sm">Guardar Middleware</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

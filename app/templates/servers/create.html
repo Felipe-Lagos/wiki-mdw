@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+
+{% block title %}Registrar Nuevo Servidor{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center justify-content-between mb-4">
+    <div>
+        <h3 class="fw-bold mb-1"><i class="bi bi-hdd-network text-primary"></i> Alta de Servidor</h3>
+        <p class="text-muted mb-0">Registrar un nuevo servidor físico, virtual o en la nube en el inventario.</p>
+    </div>
+    <a href="{{ url_for('servers.list_servers') }}" class="btn btn-outline-secondary btn-sm">
+        <i class="bi bi-arrow-left"></i> Volver al Listado
+    </a>
+</div>
+
+<div class="row justify-content-center">
+    <div class="col-lg-10">
+        <div class="card-custom">
+            <div class="card-custom-body p-4">
+                <form method="POST" action="{{ url_for('servers.create_server') }}">
+                    <h5 class="fw-semibold text-info mb-3"><i class="bi bi-info-circle"></i> 1. Identificación y Red</h5>
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-6">
+                            <label class="form-label">Nombre del Host (Hostname) *</label>
+                            <input type="text" name="hostname" class="form-control form-control-dark font-monospace" placeholder="srv-wls-core-prod01" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Dirección IP Principal *</label>
+                            <input type="text" name="ip_address" class="form-control form-control-dark font-monospace" placeholder="10.10.10.11" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">IPs Secundarias / VIPs (Opcional)</label>
+                            <input type="text" name="secondary_ips" class="form-control form-control-dark font-monospace" placeholder="10.10.10.211, 192.168.100.15">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Puerto SSH</label>
+                            <input type="number" name="ssh_port" class="form-control form-control-dark" value="22" required>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Ambiente *</label>
+                            <select name="environment" class="form-select form-select-dark">
+                                <option value="PROD">PROD (Producción)</option>
+                                <option value="QA">QA (Testing / Calidad)</option>
+                                <option value="DEV">DEV (Desarrollo)</option>
+                                <option value="DR">DR (Disaster Recovery)</option>
+                                <option value="STAGING">STAGING</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <h5 class="fw-semibold text-info mb-3"><i class="bi bi-cpu"></i> 2. Sistema Operativo y Recursos</h5>
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-4">
+                            <label class="form-label">Sistema Operativo *</label>
+                            <input type="text" name="os_name" class="form-control form-control-dark" placeholder="Red Hat Enterprise Linux, AIX, Ubuntu..." required>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Versión del SO</label>
+                            <input type="text" name="os_version" class="form-control form-control-dark" placeholder="8.8, 9.2, 22.04 LTS">
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label">vCPUs</label>
+                            <input type="number" name="cpu_cores" class="form-control form-control-dark" placeholder="8">
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label">RAM (GB)</label>
+                            <input type="number" name="ram_gb" class="form-control form-control-dark" placeholder="32">
+                        </div>
+                    </div>
+
+                    <h5 class="fw-semibold text-info mb-3"><i class="bi bi-diagram-3"></i> 3. Asignación y Notas</h5>
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-6">
+                            <label class="form-label">Proyecto Asignado</label>
+                            <select name="project_id" class="form-select form-select-dark">
+                                <option value="">-- Sin Asignar --</option>
+                                {% for p in projects %}
+                                    <option value="{{ p.id }}">{{ p.name }} ({{ p.code }})</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Estado Inicial</label>
+                            <select name="status" class="form-select form-select-dark">
+                                <option value="ACTIVE">Activo</option>
+                                <option value="MAINTENANCE">Mantenimiento</option>
+                                <option value="DECOMMISSIONED">Baja</option>
+                            </select>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">Notas y Observaciones</label>
+                            <textarea name="notes" class="form-control form-control-dark" rows="3" placeholder="Información relevante sobre el hardware, proveedor cloud, ventana de reinicio..."></textarea>
+                        </div>
+                    </div>
+
+                    <div class="d-flex justify-content-end gap-2 border-top border-secondary border-opacity-25 pt-3">
+                        <a href="{{ url_for('servers.list_servers') }}" class="btn btn-secondary">Cancelar</a>
+                        <button type="submit" class="btn btn-primary px-4"><i class="bi bi-save"></i> Guardar Servidor</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

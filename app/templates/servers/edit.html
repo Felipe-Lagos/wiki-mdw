@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+
+{% block title %}Editar Servidor {{ server.hostname }}{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center justify-content-between mb-4">
+    <div>
+        <h3 class="fw-bold mb-1"><i class="bi bi-pencil-square text-info"></i> Modificar Servidor: {{ server.hostname }}</h3>
+        <p class="text-muted mb-0">Los cambios generarán un registro de auditoría con la comparación de diferencias.</p>
+    </div>
+    <a href="{{ url_for('servers.view_server', server_id=server.id) }}" class="btn btn-outline-secondary btn-sm">
+        <i class="bi bi-arrow-left"></i> Cancelar y Volver
+    </a>
+</div>
+
+<div class="row justify-content-center">
+    <div class="col-lg-10">
+        <div class="card-custom">
+            <div class="card-custom-body p-4">
+                <form method="POST" action="{{ url_for('servers.edit_server', server_id=server.id) }}">
+                    <h5 class="fw-semibold text-info mb-3"><i class="bi bi-info-circle"></i> 1. Identificación y Red</h5>
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-6">
+                            <label class="form-label">Nombre del Host (Hostname) *</label>
+                            <input type="text" name="hostname" class="form-control form-control-dark font-monospace" value="{{ server.hostname }}" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Dirección IP Principal *</label>
+                            <input type="text" name="ip_address" class="form-control form-control-dark font-monospace" value="{{ server.ip_address }}" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">IPs Secundarias / VIPs</label>
+                            <input type="text" name="secondary_ips" class="form-control form-control-dark font-monospace" value="{{ server.secondary_ips or '' }}">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Puerto SSH</label>
+                            <input type="number" name="ssh_port" class="form-control form-control-dark" value="{{ server.ssh_port }}" required>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Ambiente *</label>
+                            <select name="environment" class="form-select form-select-dark">
+                                <option value="PROD" {% if server.environment == 'PROD' %}selected{% endif %}>PROD (Producción)</option>
+                                <option value="QA" {% if server.environment == 'QA' %}selected{% endif %}>QA (Calidad)</option>
+                                <option value="DEV" {% if server.environment == 'DEV' %}selected{% endif %}>DEV (Desarrollo)</option>
+                                <option value="DR" {% if server.environment == 'DR' %}selected{% endif %}>DR (Disaster Recovery)</option>
+                                <option value="STAGING" {% if server.environment == 'STAGING' %}selected{% endif %}>STAGING</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <h5 class="fw-semibold text-info mb-3"><i class="bi bi-cpu"></i> 2. Sistema Operativo y Recursos</h5>
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-4">
+                            <label class="form-label">Sistema Operativo *</label>
+                            <input type="text" name="os_name" class="form-control form-control-dark" value="{{ server.os_name }}" required>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Versión del SO</label>
+                            <input type="text" name="os_version" class="form-control form-control-dark" value="{{ server.os_version or '' }}">
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label">vCPUs</label>
+                            <input type="number" name="cpu_cores" class="form-control form-control-dark" value="{{ server.cpu_cores or '' }}">
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label">RAM (GB)</label>
+                            <input type="number" name="ram_gb" class="form-control form-control-dark" value="{{ server.ram_gb or '' }}">
+                        </div>
+                    </div>
+
+                    <h5 class="fw-semibold text-info mb-3"><i class="bi bi-diagram-3"></i> 3. Asignación y Notas</h5>
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-6">
+                            <label class="form-label">Proyecto Asignado</label>
+                            <select name="project_id" class="form-select form-select-dark">
+                                <option value="">-- Sin Asignar --</option>
+                                {% for p in projects %}
+                                    <option value="{{ p.id }}" {% if server.project_id == p.id %}selected{% endif %}>{{ p.name }} ({{ p.code }})</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Estado</label>
+                            <select name="status" class="form-select form-select-dark">
+                                <option value="ACTIVE" {% if server.status == 'ACTIVE' %}selected{% endif %}>Activo</option>
+                                <option value="MAINTENANCE" {% if server.status == 'MAINTENANCE' %}selected{% endif %}>Mantenimiento</option>
+                                <option value="DECOMMISSIONED" {% if server.status == 'DECOMMISSIONED' %}selected{% endif %}>Baja</option>
+                            </select>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">Notas y Observaciones</label>
+                            <textarea name="notes" class="form-control form-control-dark" rows="3">{{ server.notes or '' }}</textarea>
+                        </div>
+                    </div>
+
+                    <div class="d-flex justify-content-end gap-2 border-top border-secondary border-opacity-25 pt-3">
+                        <a href="{{ url_for('servers.view_server', server_id=server.id) }}" class="btn btn-secondary">Cancelar</a>
+                        <button type="submit" class="btn btn-primary px-4"><i class="bi bi-check-lg"></i> Guardar Cambios</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

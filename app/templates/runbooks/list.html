@@ -1,0 +1,135 @@
+{% extends "base.html" %}
+
+{% block title %}Corta-Palos y Base de Conocimiento{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center justify-content-between mb-4">
+    <div>
+        <h3 class="fw-bold mb-1"><i class="bi bi-terminal-fill text-success"></i> Corta-Palos (Runbooks)</h3>
+        <p class="text-muted mb-0">Comandos rápidos, procedimientos de emergencia y recetas operativas para WebLogic, IBM MQ, Tomcat y SO.</p>
+    </div>
+    <a href="{{ url_for('runbooks.create_runbook') }}" class="btn btn-primary">
+        <i class="bi bi-plus-circle"></i> Nuevo Corta-Palos
+    </a>
+</div>
+
+<!-- Filtros por Categoría y Búsqueda -->
+<div class="card-custom mb-4">
+    <div class="card-custom-body py-3">
+        <form method="GET" action="{{ url_for('runbooks.list_runbooks') }}" class="row g-2 align-items-center">
+            <div class="col-md-4">
+                <div class="input-group input-group-sm">
+                    <span class="input-group-text bg-dark border-secondary text-muted"><i class="bi bi-search"></i></span>
+                    <input type="text" name="q" value="{{ filters.q }}" class="form-control form-control-dark" placeholder="Buscar comando, título, sintaxis...">
+                </div>
+            </div>
+
+            <div class="col-md-3">
+                <select name="category" class="form-select form-select-dark form-select-sm">
+                    <option value="">-- Todas las Categorías --</option>
+                    {% for cat in categories %}
+                        <option value="{{ cat }}" {% if filters.category == cat %}selected{% endif %}>{{ cat }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="col-md-3">
+                <select name="server_id" class="form-select form-select-dark form-select-sm">
+                    <option value="">-- Filtrar por Servidor Específico --</option>
+                    {% for s in servers %}
+                        <option value="{{ s.id }}" {% if filters.server_id == s.id %}selected{% endif %}>{{ s.hostname }} ({{ s.ip_address }})</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="col-md-2 d-flex gap-1">
+                <button type="submit" class="btn btn-sm btn-info flex-grow-1"><i class="bi bi-filter"></i> Filtrar</button>
+                <a href="{{ url_for('runbooks.list_runbooks') }}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-arrow-counterclockwise"></i></a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Lista de Corta-Palos -->
+<div class="row g-4">
+    {% for rb in runbooks %}
+    <div class="col-lg-6">
+        <div class="card-custom h-100 d-flex flex-column">
+            <div class="card-custom-header">
+                <div class="d-flex align-items-center gap-2">
+                    <span class="badge bg-secondary text-uppercase">{{ rb.category }}</span>
+                    {% if rb.is_dangerous %}
+                        <span class="badge bg-danger"><i class="bi bi-exclamation-triangle-fill"></i> PELIGROSO</span>
+                    {% endif %}
+                    {% if rb.requires_sudo %}
+                        <span class="badge bg-warning text-dark"><i class="bi bi-shield-lock-fill"></i> SUDO</span>
+                    {% endif %}
+                </div>
+                <div class="dropdown">
+                    <button class="btn btn-link btn-sm text-muted p-0" type="button" data-bs-toggle="dropdown">
+                        <i class="bi bi-three-dots-vertical"></i>
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-dark dropdown-menu-end">
+                        <li><a class="dropdown-item" href="{{ url_for('runbooks.view_runbook', runbook_id=rb.id) }}"><i class="bi bi-eye"></i> Ver Detalle</a></li>
+                        <li><a class="dropdown-item" href="{{ url_for('runbooks.edit_runbook', runbook_id=rb.id) }}"><i class="bi bi-pencil"></i> Editar</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li>
+                            <form method="POST" action="{{ url_for('runbooks.delete_runbook', runbook_id=rb.id) }}" onsubmit="return confirm('¿Eliminar este corta-palos?');">
+                                <button type="submit" class="dropdown-item text-danger"><i class="bi bi-trash"></i> Eliminar</button>
+                            </form>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+            <div class="card-custom-body flex-grow-1">
+                <h5 class="fw-bold text-light mb-2">
+                    <a href="{{ url_for('runbooks.view_runbook', runbook_id=rb.id) }}" class="text-light text-decoration-none hover-blue">
+                        {{ rb.title }}
+                    </a>
+                </h5>
+                {% if rb.description %}
+                    <p class="text-muted small mb-3">{{ rb.description }}</p>
+                {% endif %}
+
+                <!-- Bloque de Comando Terminal -->
+                <div class="terminal-block mb-2">
+                    <div class="terminal-header">
+                        <div class="terminal-dots">
+                            <span class="terminal-dot dot-red"></span>
+                            <span class="terminal-dot dot-yellow"></span>
+                            <span class="terminal-dot dot-green"></span>
+                        </div>
+                        <button class="btn-copy" data-clipboard-text="{{ rb.command_text }}">
+                            <i class="bi bi-clipboard"></i> Copiar
+                        </button>
+                    </div>
+                    <pre class="terminal-content" id="rb_cmd_{{ rb.id }}">{{ rb.command_text }}</pre>
+                </div>
+
+                <!-- Metadatos y Destino -->
+                <div class="d-flex justify-content-between align-items-center mt-3 pt-2 border-top border-secondary border-opacity-25 small text-muted">
+                    <div>
+                        {% if rb.server %}
+                            <span>Host: <a href="{{ url_for('servers.view_server', server_id=rb.server.id) }}" class="text-info text-decoration-none">{{ rb.server.hostname }}</a></span>
+                        {% else %}
+                            <span>Aplica: <strong class="text-light">Genérico / Todos</strong></span>
+                        {% endif %}
+                    </div>
+                    <div>
+                        <small>Autor: {{ rb.created_by or 'Sysadmin' }}</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <div class="col-12 text-center py-5 text-muted">
+        <i class="bi bi-terminal fs-1 d-block mb-3"></i>
+        <h5>No se encontraron corta-palos registrados con los filtros seleccionados.</h5>
+        <a href="{{ url_for('runbooks.create_runbook') }}" class="btn btn-primary btn-sm mt-2">
+            Crear el primer Corta-Palos
+        </a>
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}

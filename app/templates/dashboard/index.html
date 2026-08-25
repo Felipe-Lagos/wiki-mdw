@@ -1,0 +1,224 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center justify-content-between mb-4">
+    <div>
+        <h3 class="fw-bold mb-1"><i class="bi bi-speedometer2 text-info"></i> Dashboard de Middleware</h3>
+        <p class="text-muted mb-0">Visión general del parque de servidores, aplicaciones e incidentes operativos.</p>
+    </div>
+    <div class="d-flex gap-2">
+        <a href="{{ url_for('runbooks.list_runbooks') }}" class="btn btn-outline-light btn-sm">
+            <i class="bi bi-book"></i> Ver Corta-Palos
+        </a>
+    </div>
+</div>
+
+<!-- Tarjetas de Métricas Principales -->
+<div class="row g-3 mb-4">
+    <div class="col-xl-3 col-md-6">
+        <div class="stat-card">
+            <div class="stat-icon blue">
+                <i class="bi bi-server"></i>
+            </div>
+            <div>
+                <div class="text-muted small fw-semibold">TOTAL SERVIDORES</div>
+                <h3 class="fw-bold mb-0 text-light">{{ total_servers }}</h3>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-3 col-md-6">
+        <div class="stat-card">
+            <div class="stat-icon purple">
+                <i class="bi bi-layers-fill"></i>
+            </div>
+            <div>
+                <div class="text-muted small fw-semibold">INSTANCIAS MIDDLEWARE</div>
+                <h3 class="fw-bold mb-0 text-light">{{ total_middlewares }}</h3>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-3 col-md-6">
+        <div class="stat-card">
+            <div class="stat-icon green">
+                <i class="bi bi-terminal-fill"></i>
+            </div>
+            <div>
+                <div class="text-muted small fw-semibold">CORTA-PALOS / RUNBOOKS</div>
+                <h3 class="fw-bold mb-0 text-light">{{ total_runbooks }}</h3>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-3 col-md-6">
+        <div class="stat-card">
+            <div class="stat-icon {% if open_incidents > 0 %}red{% else %}green{% endif %}">
+                <i class="bi bi-exclamation-octagon-fill"></i>
+            </div>
+            <div>
+                <div class="text-muted small fw-semibold">INCIDENTES ACTIVOS</div>
+                <h3 class="fw-bold mb-0 {% if open_incidents > 0 %}text-danger{% else %}text-success{% endif %}">
+                    {{ open_incidents }}
+                </h3>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4">
+    <!-- Servidores e Inventario Reciente -->
+    <div class="col-lg-7">
+        <div class="card-custom mb-4">
+            <div class="card-custom-header">
+                <h5 class="mb-0 fw-semibold"><i class="bi bi-hdd-stack text-primary"></i> Servidores Recientes</h5>
+                <a href="{{ url_for('servers.list_servers') }}" class="btn btn-sm btn-outline-secondary">Ver Todos</a>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-dark-custom">
+                    <thead>
+                        <tr>
+                            <th>Hostname</th>
+                            <th>IP</th>
+                            <th>SO</th>
+                            <th>Proyecto</th>
+                            <th>Ambiente</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for s in recent_servers %}
+                        <tr>
+                            <td>
+                                <a href="{{ url_for('servers.view_server', server_id=s.id) }}" class="fw-bold text-info text-decoration-none">
+                                    <i class="bi bi-server"></i> {{ s.hostname }}
+                                </a>
+                            </td>
+                            <td><code class="text-light">{{ s.ip_address }}</code></td>
+                            <td>{{ s.os_name }}</td>
+                            <td>{{ s.project.name if s.project else '<span class="text-muted">N/A</span>'|safe }}</td>
+                            <td>
+                                <span class="badge {% if s.environment == 'PROD' %}badge-env-prod{% elif s.environment == 'QA' %}badge-env-qa{% else %}badge-env-dev{% endif %}">
+                                    {{ s.environment }}
+                                </span>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="5" class="text-center py-3 text-muted">No hay servidores registrados.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Incidentes Recientes -->
+        <div class="card-custom">
+            <div class="card-custom-header">
+                <h5 class="mb-0 fw-semibold"><i class="bi bi-journal-medical text-warning"></i> Bitácora: Incidentes Recientes</h5>
+                <a href="{{ url_for('incidents.list_incidents') }}" class="btn btn-sm btn-outline-secondary">Ver Bitácora</a>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-dark-custom">
+                    <thead>
+                        <tr>
+                            <th>Ticket</th>
+                            <th>Título</th>
+                            <th>Severidad</th>
+                            <th>Estado</th>
+                            <th>Operador</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for inc in recent_incidents %}
+                        <tr>
+                            <td>
+                                <a href="{{ url_for('incidents.view_incident', incident_id=inc.id) }}" class="fw-semibold text-warning text-decoration-none">
+                                    {{ inc.ticket_ref or '#' ~ inc.id }}
+                                </a>
+                            </td>
+                            <td class="text-truncate" style="max-width: 200px;">{{ inc.title }}</td>
+                            <td>
+                                <span class="badge {% if inc.severity == 'CRITICAL' %}badge-sev-critical{% elif inc.severity == 'HIGH' %}badge-sev-high{% elif inc.severity == 'MEDIUM' %}badge-sev-medium{% else %}badge-sev-low{% endif %}">
+                                    {{ inc.severity }}
+                                </span>
+                            </td>
+                            <td>
+                                {% if inc.status == 'OPEN' %}
+                                    <span class="badge bg-danger">ABIERTO</span>
+                                {% elif inc.status == 'IN_PROGRESS' %}
+                                    <span class="badge bg-warning text-dark">EN CURSO</span>
+                                {% else %}
+                                    <span class="badge bg-success">RESUELTO</span>
+                                {% endif %}
+                            </td>
+                            <td><small class="text-muted">{{ inc.operator_name }}</small></td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="5" class="text-center py-3 text-muted">No hay incidentes reportados.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Columna Lateral: Middlewares + Actividad de Auditoría -->
+    <div class="col-lg-5">
+        <!-- Distribución de Middlewares -->
+        <div class="card-custom mb-4">
+            <div class="card-custom-header">
+                <h5 class="mb-0 fw-semibold"><i class="bi bi-pie-chart-fill text-purple"></i> Tecnologías Instaladas</h5>
+            </div>
+            <div class="card-custom-body">
+                {% for name, count in middleware_distribution %}
+                <div class="d-flex align-items-center justify-content-between mb-3">
+                    <div class="d-flex align-items-center gap-2">
+                        <i class="bi bi-box-seam text-info"></i>
+                        <span class="fw-semibold">{{ name }}</span>
+                    </div>
+                    <span class="badge bg-secondary rounded-pill px-3 py-2 fs-6">{{ count }}</span>
+                </div>
+                {% else %}
+                <div class="text-muted text-center py-3">No hay middlewares registrados.</div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Feed de Auditoría y Cambios -->
+        <div class="card-custom">
+            <div class="card-custom-header">
+                <h5 class="mb-0 fw-semibold"><i class="bi bi-activity text-info"></i> Últimos Cambios (Auditoría)</h5>
+                <a href="{{ url_for('audit.list_audits') }}" class="btn btn-sm btn-outline-secondary">Ver Logs</a>
+            </div>
+            <div class="card-custom-body p-0">
+                <ul class="list-group list-group-flush bg-transparent">
+                    {% for log in recent_audits %}
+                    <li class="list-group-item bg-transparent border-secondary border-opacity-25 px-3 py-2">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <span class="badge {% if log.action == 'CREATE' %}bg-success{% elif log.action == 'UPDATE' %}bg-warning text-dark{% else %}bg-danger{% endif %}" style="font-size: 0.7rem;">
+                                {{ log.action }}
+                            </span>
+                            <small class="text-muted" style="font-size: 0.75rem;">{{ log.created_at.strftime('%d/%m %H:%M') }}</small>
+                        </div>
+                        <div class="small fw-semibold text-light">{{ log.summary }}</div>
+                        <div class="d-flex justify-content-between align-items-center mt-1">
+                            <small class="text-muted">Por: <span class="text-info">{{ log.user_name }}</span></small>
+                            <button class="btn btn-link btn-sm p-0 text-decoration-none" onclick="showAuditDiff({{ log.id }})">
+                                <small><i class="bi bi-eye"></i> Ver Diff</small>
+                            </button>
+                        </div>
+                    </li>
+                    {% else %}
+                    <li class="list-group-item bg-transparent text-center py-3 text-muted">Sin actividad reciente.</li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

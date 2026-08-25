@@ -1,0 +1,124 @@
+{% extends "base.html" %}
+
+{% block title %}Editar Incidente {{ incident.ticket_ref or '#' ~ incident.id }}{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center justify-content-between mb-4">
+    <div>
+        <h3 class="fw-bold mb-1"><i class="bi bi-pencil-square text-warning"></i> Modificar Registro de Bitácora</h3>
+        <p class="text-muted mb-0">Actualizar estado, diagnóstico de causa raíz o acciones tomadas.</p>
+    </div>
+    <a href="{{ url_for('incidents.view_incident', incident_id=incident.id) }}" class="btn btn-outline-secondary btn-sm">
+        <i class="bi bi-arrow-left"></i> Cancelar
+    </a>
+</div>
+
+<div class="row justify-content-center">
+    <div class="col-lg-10">
+        <div class="card-custom">
+            <div class="card-custom-body p-4">
+                <form method="POST" action="{{ url_for('incidents.edit_incident', incident_id=incident.id) }}">
+                    <h5 class="fw-semibold text-warning mb-3"><i class="bi bi-exclamation-triangle"></i> 1. Información General</h5>
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-4">
+                            <label class="form-label">Ticket Ref</label>
+                            <input type="text" name="ticket_ref" class="form-control form-control-dark font-monospace" value="{{ incident.ticket_ref or '' }}">
+                        </div>
+                        <div class="col-md-8">
+                            <label class="form-label">Título del Incidente *</label>
+                            <input type="text" name="title" class="form-control form-control-dark" value="{{ incident.title }}" required>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Severidad *</label>
+                            <select name="severity" class="form-select form-select-dark">
+                                <option value="CRITICAL" {% if incident.severity == 'CRITICAL' %}selected{% endif %}>CRITICAL</option>
+                                <option value="HIGH" {% if incident.severity == 'HIGH' %}selected{% endif %}>HIGH</option>
+                                <option value="MEDIUM" {% if incident.severity == 'MEDIUM' %}selected{% endif %}>MEDIUM</option>
+                                <option value="LOW" {% if incident.severity == 'LOW' %}selected{% endif %}>LOW</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Estado *</label>
+                            <select name="status" class="form-select form-select-dark">
+                                <option value="OPEN" {% if incident.status == 'OPEN' %}selected{% endif %}>ABIERTO</option>
+                                <option value="IN_PROGRESS" {% if incident.status == 'IN_PROGRESS' %}selected{% endif %}>EN CURSO</option>
+                                <option value="RESOLVED" {% if incident.status == 'RESOLVED' %}selected{% endif %}>RESUELTO</option>
+                                <option value="CLOSED" {% if incident.status == 'CLOSED' %}selected{% endif %}>CERRADO</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Operador Responsable *</label>
+                            <input type="text" name="operator_name" class="form-control form-control-dark" value="{{ incident.operator_name }}" required>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">Descripción del Síntoma *</label>
+                            <textarea name="description" class="form-control form-control-dark" rows="3" required>{{ incident.description }}</textarea>
+                        </div>
+                    </div>
+
+                    <h5 class="fw-semibold text-warning mb-3"><i class="bi bi-hdd-stack"></i> 2. Entorno Afectado</h5>
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-4">
+                            <label class="form-label">Servidor</label>
+                            <select name="server_id" class="form-select form-select-dark">
+                                <option value="">-- No especificado --</option>
+                                {% for s in servers %}
+                                    <option value="{{ s.id }}" {% if incident.server_id == s.id %}selected{% endif %}>{{ s.hostname }} ({{ s.ip_address }})</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Middleware</label>
+                            <select name="middleware_id" class="form-select form-select-dark">
+                                <option value="">-- No especificado --</option>
+                                {% for m in middlewares %}
+                                    <option value="{{ m.id }}" {% if incident.middleware_id == m.id %}selected{% endif %}>{{ m.name }} ({{ m.server.hostname if m.server else '' }})</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Proyecto</label>
+                            <select name="project_id" class="form-select form-select-dark">
+                                <option value="">-- No especificado --</option>
+                                {% for p in projects %}
+                                    <option value="{{ p.id }}" {% if incident.project_id == p.id %}selected{% endif %}>{{ p.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">Corta-Palos / Runbook Utilizado (Opcional)</label>
+                            <select name="applied_runbook_id" class="form-select form-select-dark">
+                                <option value="">-- Ninguno --</option>
+                                {% for rb in runbooks %}
+                                    <option value="{{ rb.id }}" {% if incident.applied_runbook_id == rb.id %}selected{% endif %}>[{{ rb.category }}] {{ rb.title }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+
+                    <h5 class="fw-semibold text-warning mb-3"><i class="bi bi-tools"></i> 3. Diagnóstico y Resolución</h5>
+                    <div class="row g-3 mb-4">
+                        <div class="col-12">
+                            <label class="form-label">Acciones Operativas Tomadas</label>
+                            <textarea name="actions_taken" class="form-control form-control-dark font-monospace text-light" rows="3">{{ incident.actions_taken or '' }}</textarea>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Causa Raíz</label>
+                            <textarea name="root_cause" class="form-control form-control-dark" rows="3">{{ incident.root_cause or '' }}</textarea>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Pasos de Resolución</label>
+                            <textarea name="resolution_steps" class="form-control form-control-dark" rows="3">{{ incident.resolution_steps or '' }}</textarea>
+                        </div>
+                    </div>
+
+                    <div class="d-flex justify-content-end gap-2 border-top border-secondary border-opacity-25 pt-3">
+                        <a href="{{ url_for('incidents.view_incident', incident_id=incident.id) }}" class="btn btn-secondary">Cancelar</a>
+                        <button type="submit" class="btn btn-warning px-4"><i class="bi bi-check-lg"></i> Guardar Cambios</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}{{ action }} Grupo{% endblock %}
+{% block content %}
+<div class="d-flex align-items-center gap-3 mb-4">
+    <a href="{{ url_for('admin_users.list_groups') }}" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left"></i></a>
+    <h3 class="fw-bold mb-0"><i class="bi bi-collection text-warning"></i> {{ action }} Grupo</h3>
+</div>
+<div class="row justify-content-center">
+    <div class="col-lg-6">
+        <div class="card-custom">
+            <div class="card-custom-body">
+                <form method="POST">
+                    <div class="row g-3">
+                        <div class="col-12">
+                            <label class="form-label">Nombre del Grupo *</label>
+                            <input type="text" name="name" class="form-control form-control-dark"
+                                   value="{{ group.name if group else '' }}" required
+                                   placeholder="Administradores de Infraestructura">
+                        </div>
+                        {% if not group %}
+                        <div class="col-md-6">
+                            <label class="form-label">Código Único *</label>
+                            <input type="text" name="code" class="form-control form-control-dark font-monospace"
+                                   value="" required placeholder="GRP-INFRA"
+                                   style="text-transform:uppercase;">
+                            <small class="text-muted">Identificador corto, único. Ej: GRP-OPS, GRP-DBA</small>
+                        </div>
+                        {% endif %}
+                        <div class="col-md-6">
+                            <label class="form-label">Rol del Grupo *</label>
+                            <select name="role" class="form-select form-select-dark">
+                                <option value="viewer" {% if group and group.role == 'viewer' %}selected{% endif %}>👁 Viewer — Solo Lectura</option>
+                                <option value="editor" {% if group and group.role == 'editor' %}selected{% endif %}>✏️ Editor — Ver y Editar</option>
+                                <option value="admin" {% if group and group.role == 'admin' %}selected{% endif %}>🛡 Admin — Acceso Total</option>
+                            </select>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">Descripción</label>
+                            <textarea name="description" class="form-control form-control-dark" rows="2"
+                                      placeholder="Describe el propósito y permisos de este grupo...">{{ group.description if group else '' }}</textarea>
+                        </div>
+                        <div class="col-12 d-flex gap-2 justify-content-end">
+                            <a href="{{ url_for('admin_users.list_groups') }}" class="btn btn-outline-secondary">Cancelar</a>
+                            <button type="submit" class="btn btn-warning"><i class="bi bi-check-lg me-1"></i> {{ action }} Grupo</button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

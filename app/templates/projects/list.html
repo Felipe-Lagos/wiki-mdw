@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+
+{% block title %}Proyectos y Ambientes{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center justify-content-between mb-4">
+    <div>
+        <h3 class="fw-bold mb-1"><i class="bi bi-diagram-3-fill text-info"></i> Proyectos y Aplicaciones</h3>
+        <p class="text-muted mb-0">Agrupación lógica de servidores e infraestructura por área de negocio o producto.</p>
+    </div>
+    <a href="{{ url_for('projects.create_project') }}" class="btn btn-primary">
+        <i class="bi bi-plus-circle"></i> Nuevo Proyecto
+    </a>
+</div>
+
+<div class="row g-4">
+    {% for item in project_stats %}
+    <div class="col-lg-4 col-md-6">
+        <div class="card-custom h-100 d-flex flex-column">
+            <div class="card-custom-header">
+                <div class="d-flex align-items-center gap-2">
+                    <span class="badge bg-dark border border-secondary text-info fw-bold">{{ item.project.code }}</span>
+                    <span class="badge {% if item.project.environment == 'PROD' %}badge-env-prod{% elif item.project.environment == 'QA' %}badge-env-qa{% else %}badge-env-dev{% endif %}">
+                        {{ item.project.environment }}
+                    </span>
+                </div>
+                <a href="{{ url_for('projects.view_project', project_id=item.project.id) }}" class="btn btn-sm btn-outline-info">
+                    Ver <i class="bi bi-arrow-right"></i>
+                </a>
+            </div>
+            <div class="card-custom-body flex-grow-1">
+                <h5 class="fw-bold text-light mb-2">
+                    <a href="{{ url_for('projects.view_project', project_id=item.project.id) }}" class="text-light text-decoration-none">
+                        {{ item.project.name }}
+                    </a>
+                </h5>
+                <p class="text-muted small mb-3">
+                    {{ item.project.description or 'Sin descripción detallada.' }}
+                </p>
+
+                <div class="row g-2 pt-2 border-top border-secondary border-opacity-25 mt-auto">
+                    <div class="col-6">
+                        <div class="p-2 rounded bg-dark border border-secondary border-opacity-25 text-center">
+                            <small class="text-muted d-block" style="font-size: 0.7rem;">SERVIDORES</small>
+                            <span class="fs-5 fw-bold text-info">{{ item.server_count }}</span>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="p-2 rounded bg-dark border border-secondary border-opacity-25 text-center">
+                            <small class="text-muted d-block" style="font-size: 0.7rem;">INCIDENTES</small>
+                            <span class="fs-5 fw-bold {% if item.incident_count > 0 %}text-warning{% else %}text-muted{% endif %}">{{ item.incident_count }}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <div class="col-12 text-center py-5 text-muted">
+        <i class="bi bi-diagram-3 fs-1 d-block mb-3"></i>
+        <h5>No hay proyectos registrados.</h5>
+        <a href="{{ url_for('projects.create_project') }}" class="btn btn-primary btn-sm mt-2">
+            Crear el primer proyecto
+        </a>
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}

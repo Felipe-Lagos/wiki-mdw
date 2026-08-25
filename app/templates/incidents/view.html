@@ -1,0 +1,286 @@
+{% extends "base.html" %}
+
+{% block title %}Incidente {{ incident.ticket_ref or '#' ~ incident.id }}{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center justify-content-between mb-4">
+    <div class="d-flex align-items-center gap-3">
+        <a href="{{ url_for('incidents.list_incidents') }}" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-arrow-left"></i> Volver a Bitácora
+        </a>
+        <div>
+            <div class="d-flex align-items-center gap-2">
+                <span class="badge font-monospace {% if incident.severity == 'CRITICAL' %}badge-sev-critical{% elif incident.severity == 'HIGH' %}badge-sev-high{% else %}badge-sev-medium{% endif %}">
+                    {{ incident.severity }}
+                </span>
+                <span class="badge {% if incident.status == 'OPEN' %}bg-danger{% elif incident.status == 'IN_PROGRESS' %}bg-warning text-dark{% else %}bg-success{% endif %}">
+                    {{ incident.status }}
+                </span>
+                <span class="badge bg-dark border border-secondary text-info font-monospace">
+                    <i class="bi bi-stopwatch"></i> {{ incident.duration_display }}
+                </span>
+                <span class="text-muted small">Registrado el {{ incident.occurred_at.strftime('%d/%m/%Y %H:%M') }}</span>
+            </div>
+            <h3 class="fw-bold mb-0 text-light mt-1">
+                {{ incident.ticket_ref ~ ' - ' if incident.ticket_ref else '' }}{{ incident.title }}
+            </h3>
+        </div>
+    </div>
+
+    <div class="d-flex gap-2">
+        {% if incident.status != 'RESOLVED' and incident.status != 'CLOSED' %}
+            <button class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#resolveIncidentModal">
+                <i class="bi bi-check2-circle"></i> Marcar Resuelto
+            </button>
+        {% endif %}
+        <a href="{{ url_for('incidents.edit_incident', incident_id=incident.id) }}" class="btn btn-outline-info btn-sm">
+            <i class="bi bi-pencil"></i> Editar
+        </a>
+    </div>
+</div>
+
+<div class="row g-4">
+    <!-- Contenido Principal -->
+    <div class="col-lg-8">
+        <!-- Descripción del Síntoma -->
+        <div class="card-custom mb-4">
+            <div class="card-custom-header">
+                <h5 class="mb-0 fw-semibold"><i class="bi bi-chat-left-text text-warning"></i> Descripción del Incidente</h5>
+            </div>
+            <div class="card-custom-body">
+                <p class="text-light mb-0" style="white-space: pre-wrap;">{{ incident.description }}</p>
+            </div>
+        </div>
+
+        <!-- Corta-Palos / Runbook Aplicado -->
+        {% if incident.applied_runbook %}
+        <div class="card-custom mb-4 border-info">
+            <div class="card-custom-header bg-info bg-opacity-10">
+                <div class="d-flex align-items-center gap-2">
+                    <i class="bi bi-terminal-fill text-info fs-5"></i>
+                    <h5 class="mb-0 fw-semibold text-info">Corta-Palos Asociado / Procedimiento de Resolución</h5>
+                </div>
+                <a href="{{ url_for('runbooks.view_runbook', runbook_id=incident.applied_runbook.id) }}" class="btn btn-sm btn-outline-info">
+                    Ver Runbook <i class="bi bi-box-arrow-up-right"></i>
+                </a>
+            </div>
+            <div class="card-custom-body">
+                <h6 class="fw-bold text-light mb-1">{{ incident.applied_runbook.title }}</h6>
+                {% if incident.applied_runbook.description %}
+                    <p class="text-muted small mb-2">{{ incident.applied_runbook.description }}</p>
+                {% endif %}
+                <div class="terminal-block">
+                    <div class="terminal-header">
+                        <span class="text-muted small font-monospace">bash</span>
+                        <button class="btn-copy" data-clipboard-text="{{ incident.applied_runbook.command_text }}">
+                            <i class="bi bi-clipboard"></i> Copiar
+                        </button>
+                    </div>
+                    <pre class="terminal-content mb-0">{{ incident.applied_runbook.command_text }}</pre>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Acciones Operativas Tomadas Iniciales -->
+        {% if incident.actions_taken %}
+        <div class="card-custom mb-4">
+            <div class="card-custom-header">
+                <h5 class="mb-0 fw-semibold"><i class="bi bi-terminal-check text-info"></i> Acciones Operativas Registradas</h5>
+            </div>
+            <div class="card-custom-body">
+                <div class="terminal-block">
+                    <pre class="terminal-content mb-0">{{ incident.actions_taken }}</pre>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Línea de Tiempo de Avances Operativos (Timeline) -->
+        <div class="card-custom mb-4">
+            <div class="card-custom-header">
+                <h5 class="mb-0 fw-semibold"><i class="bi bi-hourglass-split text-info"></i> Seguimiento y Bitácora de Avance</h5>
+                <span class="badge bg-secondary">{{ incident.timeline_updates|length }} Entradas</span>
+            </div>
+            <div class="card-custom-body">
+                <!-- Lista de Entradas del Timeline -->
+                <div class="position-relative ps-4 border-start border-secondary border-opacity-50 ms-2 mb-4">
+                    {% for item in incident.timeline_updates %}
+                    <div class="mb-3 position-relative">
+                        <div class="position-absolute bg-info rounded-circle" style="width: 10px; height: 10px; left: -21px; top: 5px;"></div>
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <strong class="text-info small"><i class="bi bi-person"></i> {{ item.operator_name }}</strong>
+                            <small class="text-muted">{{ item.created_at.strftime('%d/%m/%Y %H:%M:%S') }}</small>
+                        </div>
+                        <div class="p-2 rounded bg-dark border border-secondary border-opacity-25 text-light small">
+                            {{ item.note }}
+                        </div>
+                        {% if item.status_at_time %}
+                            <small class="text-muted mt-1 d-block">Estado: <span class="badge bg-secondary" style="font-size: 0.65rem;">{{ item.status_at_time }}</span></small>
+                        {% endif %}
+                    </div>
+                    {% else %}
+                    <div class="text-muted small">No hay actualizaciones intermedias en la línea de tiempo.</div>
+                    {% endfor %}
+                </div>
+
+                <!-- Formulario para agregar nuevo avance operativo -->
+                <form method="POST" action="{{ url_for('incidents.add_timeline_update', incident_id=incident.id) }}" class="border-top border-secondary border-opacity-25 pt-3">
+                    <h6 class="fw-semibold text-light mb-2"><i class="bi bi-plus-circle"></i> Agregar Nota Operativa / Avance:</h6>
+                    <div class="row g-2">
+                        <div class="col-md-8">
+                            <textarea name="note" class="form-control form-control-dark" rows="2" placeholder="Describa el avance o acción realizada..." required></textarea>
+                        </div>
+                        <div class="col-md-4 d-flex flex-column gap-2">
+                            <input type="text" name="operator_name" class="form-control form-control-dark form-control-sm" placeholder="Tu Nombre / Sysadmin" value="Felipe Lagos">
+                            <select name="status" class="form-select form-select-dark form-select-sm">
+                                <option value="">Mantener Estado Actual ({{ incident.status }})</option>
+                                <option value="IN_PROGRESS">Cambiar a EN CURSO</option>
+                                <option value="RESOLVED">Cambiar a RESUELTO</option>
+                                <option value="CLOSED">Cambiar a CERRADO</option>
+                            </select>
+                            <button type="submit" class="btn btn-info btn-sm mt-auto"><i class="bi bi-send"></i> Registrar Avance</button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Causa Raíz y Solución (Knowledge Base) -->
+        <div class="card-custom mb-4">
+            <div class="card-custom-header">
+                <h5 class="mb-0 fw-semibold"><i class="bi bi-lightbulb text-success"></i> Base de Conocimiento (Causa Raíz & Resolución)</h5>
+            </div>
+            <div class="card-custom-body">
+                <div class="mb-3">
+                    <h6 class="text-muted small fw-semibold text-uppercase">Causa Raíz Diagnosticada:</h6>
+                    <div class="p-3 bg-dark border border-secondary border-opacity-25 rounded text-light">
+                        {{ incident.root_cause or 'Aún no documentada.' }}
+                    </div>
+                </div>
+
+                <div>
+                    <h6 class="text-muted small fw-semibold text-uppercase">Pasos de Resolución / Guía de Prevención:</h6>
+                    <div class="p-3 bg-dark border border-success border-opacity-25 rounded text-success-emphasis" style="background-color: rgba(16, 185, 129, 0.05) !important;">
+                        {{ incident.resolution_steps or 'Aún no documentados.' }}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Barra Lateral: Entidades Afectadas y Auditoría -->
+    <div class="col-lg-4">
+        <!-- Entorno Afectado -->
+        <div class="card-custom mb-4">
+            <div class="card-custom-header">
+                <h5 class="mb-0 fw-semibold"><i class="bi bi-diagram-2 text-info"></i> Entorno Afectado</h5>
+            </div>
+            <div class="card-custom-body">
+                <ul class="list-group list-group-flush bg-transparent">
+                    <li class="list-group-item bg-transparent border-secondary border-opacity-25 px-0 py-2">
+                        <small class="text-muted d-block">Servidor:</small>
+                        {% if incident.server %}
+                            <a href="{{ url_for('servers.view_server', server_id=incident.server.id) }}" class="text-info fw-semibold text-decoration-none">
+                                <i class="bi bi-server"></i> {{ incident.server.hostname }} ({{ incident.server.ip_address }})
+                            </a>
+                        {% else %}
+                            <span class="text-muted">No asociado</span>
+                        {% endif %}
+                    </li>
+                    <li class="list-group-item bg-transparent border-secondary border-opacity-25 px-0 py-2">
+                        <small class="text-muted d-block">Middleware:</small>
+                        {% if incident.middleware %}
+                            <span class="text-light fw-semibold">{{ incident.middleware.name }} ({{ incident.middleware.domain_or_instance or incident.middleware.version }})</span>
+                        {% else %}
+                            <span class="text-muted">No asociado</span>
+                        {% endif %}
+                    </li>
+                    <li class="list-group-item bg-transparent border-secondary border-opacity-25 px-0 py-2">
+                        <small class="text-muted d-block">Proyecto / Negocio:</small>
+                        {% if incident.project %}
+                            <a href="{{ url_for('projects.view_project', project_id=incident.project.id) }}" class="text-light fw-semibold text-decoration-none">
+                                {{ incident.project.name }}
+                            </a>
+                        {% else %}
+                            <span class="text-muted">No asociado</span>
+                        {% endif %}
+                    </li>
+                    <li class="list-group-item bg-transparent border-secondary border-opacity-25 px-0 py-2">
+                        <small class="text-muted d-block">Operador Responsable:</small>
+                        <span class="text-light">{{ incident.operator_name }}</span>
+                    </li>
+                    {% if incident.resolved_at %}
+                    <li class="list-group-item bg-transparent border-secondary border-opacity-25 px-0 py-2">
+                        <small class="text-muted d-block">Fecha de Cierre / Resolución:</small>
+                        <span class="text-success fw-semibold">{{ incident.resolved_at.strftime('%d/%m/%Y %H:%M') }}</span>
+                    </li>
+                    {% endif %}
+                </ul>
+            </div>
+        </div>
+
+        <!-- Historial de Auditoría -->
+        <div class="card-custom">
+            <div class="card-custom-header">
+                <h5 class="mb-0 fw-semibold"><i class="bi bi-clock-history text-info"></i> Control de Cambios</h5>
+            </div>
+            <div class="card-custom-body p-0">
+                <ul class="list-group list-group-flush bg-transparent">
+                    {% for log in audit_history %}
+                    <li class="list-group-item bg-transparent border-secondary border-opacity-25 px-3 py-2">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span class="badge {% if log.action == 'ROLLBACK' %}bg-danger{% elif log.action == 'CREATE' %}bg-success{% else %}bg-secondary{% endif %}">{{ log.action }}</span>
+                            <small class="text-muted">{{ log.created_at.strftime('%d/%m %H:%M') }}</small>
+                        </div>
+                        <div class="small text-light mt-1">{{ log.summary }}</div>
+                        <div class="d-flex justify-content-between align-items-center mt-1">
+                            <small class="text-muted">Por: {{ log.user_name }}</small>
+                            <button class="btn btn-link btn-sm p-0 text-decoration-none" onclick="showAuditDiff({{ log.id }})">
+                                <small>Diff</small>
+                            </button>
+                        </div>
+                    </li>
+                    {% else %}
+                    <li class="list-group-item bg-transparent text-center py-3 text-muted">Sin cambios auditados.</li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para Resolución Rápida -->
+<div class="modal fade" id="resolveIncidentModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content card-custom">
+            <form method="POST" action="{{ url_for('incidents.resolve_incident', incident_id=incident.id) }}">
+                <div class="modal-header border-secondary">
+                    <h5 class="modal-title"><i class="bi bi-check-circle text-success"></i> Marcar Incidente como Resuelto</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="text-light small">Ingrese un resumen de la solución definitiva aplicada para cerrar el incidente.</p>
+                    <div class="mb-3">
+                        <label class="form-label">Notas de Resolución / Cierre *</label>
+                        <textarea name="resolution_notes" class="form-control form-control-dark" rows="3" placeholder="Describa cómo se restableció el servicio..." required>{{ incident.resolution_steps or '' }}</textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Vincular Corta-Palos / Runbook Utilizado (Opcional)</label>
+                        <select name="applied_runbook_id" class="form-select form-select-dark">
+                            <option value="">-- Ninguno --</option>
+                            {% for rb in runbooks %}
+                                <option value="{{ rb.id }}" {% if incident.applied_runbook_id == rb.id %}selected{% endif %}>[{{ rb.category }}] {{ rb.title }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer border-secondary">
+                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-success btn-sm"><i class="bi bi-check-lg"></i> Confirmar Resolución</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

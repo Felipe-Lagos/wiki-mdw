@@ -1,0 +1,203 @@
+{% extends "base.html" %}
+
+{% block title %}Bitácora de Incidentes y Operaciones{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center justify-content-between mb-4">
+    <div>
+        <h3 class="fw-bold mb-1"><i class="bi bi-journal-medical text-warning"></i> Bitácora de Incidentes y Operaciones</h3>
+        <p class="text-muted mb-0">Registro y base de conocimiento de eventos pasados, diagnósticos de causa raíz y resoluciones.</p>
+    </div>
+    <div class="d-flex gap-2">
+        <div class="dropdown">
+            <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                <i class="bi bi-download"></i> Exportar
+            </button>
+            <ul class="dropdown-menu dropdown-menu-dark dropdown-menu-end">
+                <li><a class="dropdown-item" href="{{ url_for('incidents.export_csv') }}"><i class="bi bi-filetype-csv"></i> Exportar a CSV (Excel)</a></li>
+                <li><a class="dropdown-item" href="{{ url_for('incidents.export_json') }}"><i class="bi bi-filetype-json"></i> Exportar a JSON</a></li>
+            </ul>
+        </div>
+        <a href="{{ url_for('incidents.create_incident') }}" class="btn btn-warning btn-sm">
+            <i class="bi bi-plus-circle"></i> Registrar Incidente
+        </a>
+    </div>
+</div>
+
+<!-- Tarjetas de Resumen de Bitácora -->
+<div class="row g-3 mb-4">
+    <div class="col-md-4">
+        <div class="stat-card py-2">
+            <div class="stat-icon blue" style="width: 42px; height: 42px; font-size: 1.25rem;">
+                <i class="bi bi-journal-text"></i>
+            </div>
+            <div>
+                <small class="text-muted fw-semibold">TOTAL REGISTROS</small>
+                <h4 class="fw-bold mb-0 text-light">{{ stats.total }}</h4>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="stat-card py-2">
+            <div class="stat-icon {% if stats.open > 0 %}red{% else %}green{% endif %}" style="width: 42px; height: 42px; font-size: 1.25rem;">
+                <i class="bi bi-exclamation-octagon"></i>
+            </div>
+            <div>
+                <small class="text-muted fw-semibold">INCIDENTES ABIERTOS</small>
+                <h4 class="fw-bold mb-0 {% if stats.open > 0 %}text-danger{% else %}text-success{% endif %}">{{ stats.open }}</h4>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="stat-card py-2">
+            <div class="stat-icon green" style="width: 42px; height: 42px; font-size: 1.25rem;">
+                <i class="bi bi-check2-circle"></i>
+            </div>
+            <div>
+                <small class="text-muted fw-semibold">RESUELTOS / BASE CONOCIMIENTO</small>
+                <h4 class="fw-bold mb-0 text-success">{{ stats.resolved }}</h4>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Filtros de Bitácora -->
+<div class="card-custom mb-4">
+    <div class="card-custom-body py-3">
+        <form method="GET" action="{{ url_for('incidents.list_incidents') }}" class="row g-2 align-items-center">
+            <div class="col-md-4">
+                <div class="input-group input-group-sm">
+                    <span class="input-group-text bg-dark border-secondary text-muted"><i class="bi bi-search"></i></span>
+                    <input type="text" name="q" value="{{ filters.q }}" class="form-control form-control-dark" placeholder="Buscar por Ticket, Título, Causa Raíz...">
+                </div>
+            </div>
+
+            <div class="col-md-2">
+                <select name="severity" class="form-select form-select-dark form-select-sm">
+                    <option value="">-- Severidad --</option>
+                    <option value="CRITICAL" {% if filters.severity == 'CRITICAL' %}selected{% endif %}>Crítica</option>
+                    <option value="HIGH" {% if filters.severity == 'HIGH' %}selected{% endif %}>Alta</option>
+                    <option value="MEDIUM" {% if filters.severity == 'MEDIUM' %}selected{% endif %}>Media</option>
+                    <option value="LOW" {% if filters.severity == 'LOW' %}selected{% endif %}>Baja</option>
+                </select>
+            </div>
+
+            <div class="col-md-2">
+                <select name="status" class="form-select form-select-dark form-select-sm">
+                    <option value="">-- Estado --</option>
+                    <option value="OPEN" {% if filters.status == 'OPEN' %}selected{% endif %}>Abierto</option>
+                    <option value="IN_PROGRESS" {% if filters.status == 'IN_PROGRESS' %}selected{% endif %}>En Curso</option>
+                    <option value="RESOLVED" {% if filters.status == 'RESOLVED' %}selected{% endif %}>Resuelto</option>
+                    <option value="CLOSED" {% if filters.status == 'CLOSED' %}selected{% endif %}>Cerrado</option>
+                </select>
+            </div>
+
+            <div class="col-md-3">
+                <select name="server_id" class="form-select form-select-dark form-select-sm">
+                    <option value="">-- Filtrar por Servidor --</option>
+                    {% for s in servers %}
+                        <option value="{{ s.id }}" {% if filters.server_id == s.id %}selected{% endif %}>{{ s.hostname }} ({{ s.ip_address }})</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="col-md-1 d-flex gap-1">
+                <button type="submit" class="btn btn-sm btn-info w-100"><i class="bi bi-filter"></i></button>
+                <a href="{{ url_for('incidents.list_incidents') }}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-arrow-counterclockwise"></i></a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Tabla de Incidentes -->
+<div class="card-custom">
+    <div class="table-responsive">
+        <table class="table table-dark-custom">
+            <thead>
+                <tr>
+                    <th>Fecha</th>
+                    <th>Ticket Ref</th>
+                    <th>Título del Evento</th>
+                    <th>Servidor / Middleware</th>
+                    <th>Duración</th>
+                    <th>Severidad</th>
+                    <th>Estado</th>
+                    <th>Operador</th>
+                    <th class="text-end">Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for inc in incidents %}
+                <tr>
+                    <td>
+                        <small class="text-muted">{{ inc.occurred_at.strftime('%d/%m/%Y %H:%M') }}</small>
+                    </td>
+                    <td>
+                        <a href="{{ url_for('incidents.view_incident', incident_id=inc.id) }}" class="fw-bold text-warning text-decoration-none font-monospace">
+                            {{ inc.ticket_ref or '#' ~ inc.id }}
+                        </a>
+                    </td>
+                    <td>
+                        <a href="{{ url_for('incidents.view_incident', incident_id=inc.id) }}" class="text-light text-decoration-none fw-semibold">
+                            {{ inc.title }}
+                        </a>
+                        {% if inc.applied_runbook %}
+                            <br><small class="text-info"><i class="bi bi-terminal"></i> Corta-Palos: {{ inc.applied_runbook.title }}</small>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if inc.server %}
+                            <a href="{{ url_for('servers.view_server', server_id=inc.server.id) }}" class="text-info text-decoration-none">
+                                <i class="bi bi-server"></i> {{ inc.server.hostname }}
+                            </a>
+                            {% if inc.middleware %}<br><small class="text-muted">{{ inc.middleware.name }}</small>{% endif %}
+                        {% else %}
+                            <span class="text-muted">No especificado</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <small class="badge bg-dark border border-secondary font-monospace">{{ inc.duration_display }}</small>
+                    </td>
+                    <td>
+                        <span class="badge {% if inc.severity == 'CRITICAL' %}badge-sev-critical{% elif inc.severity == 'HIGH' %}badge-sev-high{% elif inc.severity == 'MEDIUM' %}badge-sev-medium{% else %}badge-sev-low{% endif %}">
+                            {{ inc.severity }}
+                        </span>
+                    </td>
+                    <td>
+                        {% if inc.status == 'OPEN' %}
+                            <span class="badge bg-danger">ABIERTO</span>
+                        {% elif inc.status == 'IN_PROGRESS' %}
+                            <span class="badge bg-warning text-dark">EN CURSO</span>
+                        {% elif inc.status == 'RESOLVED' %}
+                            <span class="badge bg-success">RESUELTO</span>
+                        {% else %}
+                            <span class="badge bg-secondary">CERRADO</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <span class="text-light small">{{ inc.operator_name }}</span>
+                    </td>
+                    <td class="text-end">
+                        <div class="btn-group btn-group-sm">
+                            <a href="{{ url_for('incidents.view_incident', incident_id=inc.id) }}" class="btn btn-outline-info" title="Ver Detalle y Seguimiento">
+                                <i class="bi bi-eye"></i>
+                            </a>
+                            <a href="{{ url_for('incidents.edit_incident', incident_id=inc.id) }}" class="btn btn-outline-secondary" title="Editar">
+                                <i class="bi bi-pencil"></i>
+                            </a>
+                        </div>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="9" class="text-center py-4 text-muted">
+                        <i class="bi bi-journal-x fs-3 d-block mb-2"></i>
+                        No se encontraron registros de bitácora con los filtros seleccionados.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

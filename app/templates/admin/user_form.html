@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+{% block title %}{{ action }} Usuario{% endblock %}
+{% block content %}
+<div class="d-flex align-items-center gap-3 mb-4">
+    <a href="{{ url_for('admin_users.list_users') }}" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left"></i></a>
+    <h3 class="fw-bold mb-0"><i class="bi bi-person-gear text-info"></i> {{ action }} Usuario</h3>
+</div>
+
+<div class="row justify-content-center">
+    <div class="col-lg-7">
+        <div class="card-custom">
+            <div class="card-custom-body">
+                <form method="POST">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Nombre de Usuario *</label>
+                            <input type="text" name="username" class="form-control form-control-dark"
+                                   value="{{ user.username if user else '' }}"
+                                   {{ 'readonly' if user else 'required' }}
+                                   placeholder="jdoe" autocomplete="off">
+                            {% if user %}<small class="text-muted">El nombre de usuario no puede cambiarse.</small>{% endif %}
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Nombre Completo *</label>
+                            <input type="text" name="full_name" class="form-control form-control-dark"
+                                   value="{{ user.full_name if user else '' }}" required placeholder="Juan Pérez">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Email</label>
+                            <input type="email" name="email" class="form-control form-control-dark"
+                                   value="{{ user.email if user else '' }}" placeholder="jdoe@empresa.com">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Grupo</label>
+                            <select name="group_id" class="form-select form-select-dark">
+                                <option value="">— Sin Grupo —</option>
+                                {% for grp in groups %}
+                                    <option value="{{ grp.id }}"
+                                        {% if user and user.group_id == grp.id %}selected{% endif %}>
+                                        {{ grp.name }} [{{ grp.role | upper }}]
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Rol Individual *</label>
+                            <select name="role" class="form-select form-select-dark">
+                                <option value="viewer" {% if user and user.role == 'viewer' %}selected{% endif %}>👁 Viewer — Solo Lectura</option>
+                                <option value="editor" {% if user and user.role == 'editor' %}selected{% endif %}>✏️ Editor — Ver y Editar</option>
+                                <option value="admin" {% if user and user.role == 'admin' %}selected{% endif %}>🛡 Admin — Acceso Total</option>
+                            </select>
+                            <small class="text-muted">Se aplica el rol más permisivo entre el individual y el del grupo.</small>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Estado</label>
+                            <select name="is_active" class="form-select form-select-dark">
+                                <option value="1" {% if not user or user.is_active %}selected{% endif %}>✅ Activo</option>
+                                <option value="0" {% if user and not user.is_active %}selected{% endif %}>⏸ Inactivo</option>
+                            </select>
+                        </div>
+
+                        <div class="col-12"><hr class="border-secondary border-opacity-25"></div>
+
+                        {% if not user %}
+                        <div class="col-12">
+                            <label class="form-label">Contraseña *</label>
+                            <input type="password" name="password" class="form-control form-control-dark"
+                                   placeholder="Mínimo 6 caracteres" minlength="6" required>
+                        </div>
+                        {% else %}
+                        <div class="col-12">
+                            <label class="form-label">Nueva Contraseña <small class="text-muted">(dejar en blanco para no cambiar)</small></label>
+                            <input type="password" name="new_password" class="form-control form-control-dark"
+                                   placeholder="Mínimo 6 caracteres" minlength="6">
+                        </div>
+                        {% endif %}
+
+                        <div class="col-12 d-flex gap-2 justify-content-end mt-2">
+                            <a href="{{ url_for('admin_users.list_users') }}" class="btn btn-outline-secondary">Cancelar</a>
+                            <button type="submit" class="btn btn-info">
+                                <i class="bi bi-check-lg me-1"></i> {{ action }} Usuario
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

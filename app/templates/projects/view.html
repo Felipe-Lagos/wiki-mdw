@@ -1,0 +1,144 @@
+{% extends "base.html" %}
+
+{% block title %}{{ project.name }}{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center justify-content-between mb-4">
+    <div class="d-flex align-items-center gap-3">
+        <a href="{{ url_for('projects.list_projects') }}" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-arrow-left"></i> Volver a Proyectos
+        </a>
+        <div>
+            <div class="d-flex align-items-center gap-2">
+                <span class="badge bg-dark border border-secondary text-info fw-bold">{{ project.code }}</span>
+                <span class="badge {% if project.environment == 'PROD' %}badge-env-prod{% elif project.environment == 'QA' %}badge-env-qa{% else %}badge-env-dev{% endif %}">
+                    {{ project.environment }}
+                </span>
+            </div>
+            <h3 class="fw-bold mb-0 text-light mt-1">{{ project.name }}</h3>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4">
+    <div class="col-lg-8">
+        <!-- Servidores del Proyecto -->
+        <div class="card-custom mb-4">
+            <div class="card-custom-header">
+                <h5 class="mb-0 fw-semibold"><i class="bi bi-server text-primary"></i> Servidores Asociados</h5>
+                <span class="badge bg-secondary">{{ servers|length }} Hosts</span>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-dark-custom">
+                    <thead>
+                        <tr>
+                            <th>Hostname</th>
+                            <th>IP</th>
+                            <th>SO</th>
+                            <th>Middlewares</th>
+                            <th>Estado</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for s in servers %}
+                        <tr>
+                            <td>
+                                <a href="{{ url_for('servers.view_server', server_id=s.id) }}" class="fw-bold text-info text-decoration-none">
+                                    <i class="bi bi-server"></i> {{ s.hostname }}
+                                </a>
+                            </td>
+                            <td><code class="text-light">{{ s.ip_address }}</code></td>
+                            <td>{{ s.os_name }} {{ s.os_version or '' }}</td>
+                            <td>
+                                {% for m in s.middlewares %}
+                                    <span class="badge badge-tech">{{ m.name }}</span>
+                                {% else %}
+                                    <small class="text-muted">Ninguno</small>
+                                {% endfor %}
+                            </td>
+                            <td>
+                                <span class="badge {% if s.status == 'ACTIVE' %}bg-success{% else %}bg-warning text-dark{% endif %}">
+                                    {{ s.status }}
+                                </span>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="5" class="text-center py-3 text-muted">No hay servidores asignados a este proyecto.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Incidentes del Proyecto -->
+        <div class="card-custom">
+            <div class="card-custom-header">
+                <h5 class="mb-0 fw-semibold"><i class="bi bi-journal-text text-warning"></i> Incidentes en este Proyecto</h5>
+                <span class="badge bg-secondary">{{ incidents|length }} Eventos</span>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-dark-custom">
+                    <thead>
+                        <tr>
+                            <th>Ticket</th>
+                            <th>Título</th>
+                            <th>Severidad</th>
+                            <th>Estado</th>
+                            <th>Fecha</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for inc in incidents %}
+                        <tr>
+                            <td>
+                                <a href="{{ url_for('incidents.view_incident', incident_id=inc.id) }}" class="text-warning fw-semibold text-decoration-none">
+                                    {{ inc.ticket_ref or '#' ~ inc.id }}
+                                </a>
+                            </td>
+                            <td>{{ inc.title }}</td>
+                            <td>
+                                <span class="badge {% if inc.severity == 'CRITICAL' %}badge-sev-critical{% elif inc.severity == 'HIGH' %}badge-sev-high{% else %}badge-sev-medium{% endif %}">
+                                    {{ inc.severity }}
+                                </span>
+                            </td>
+                            <td>
+                                <span class="badge {% if inc.status == 'OPEN' %}bg-danger{% elif inc.status == 'IN_PROGRESS' %}bg-warning text-dark{% else %}bg-success{% endif %}">
+                                    {{ inc.status }}
+                                </span>
+                            </td>
+                            <td><small class="text-muted">{{ inc.occurred_at.strftime('%d/%m/%Y') }}</small></td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="5" class="text-center py-3 text-muted">Sin incidentes registrados en este proyecto.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-4">
+        <div class="card-custom">
+            <div class="card-custom-header">
+                <h5 class="mb-0 fw-semibold"><i class="bi bi-info-circle text-info"></i> Ficha del Proyecto</h5>
+            </div>
+            <div class="card-custom-body">
+                <p class="text-light">{{ project.description or 'Sin descripción disponible.' }}</p>
+                <hr class="border-secondary border-opacity-25">
+                <div class="mb-2">
+                    <small class="text-muted d-block">Lead / Responsable:</small>
+                    <span class="fw-semibold text-light">{{ project.lead_name or 'No informado' }}</span>
+                </div>
+                <div class="mb-2">
+                    <small class="text-muted d-block">Fecha de Creación:</small>
+                    <span class="text-muted">{{ project.created_at.strftime('%d/%m/%Y %H:%M') }}</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

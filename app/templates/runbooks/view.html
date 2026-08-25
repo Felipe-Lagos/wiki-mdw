@@ -1,0 +1,135 @@
+{% extends "base.html" %}
+
+{% block title %}{{ runbook.title }}{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center justify-content-between mb-4">
+    <div class="d-flex align-items-center gap-3">
+        <a href="{{ url_for('runbooks.list_runbooks') }}" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-arrow-left"></i> Volver a Corta-Palos
+        </a>
+        <div>
+            <div class="d-flex align-items-center gap-2">
+                <span class="badge bg-secondary text-uppercase">{{ runbook.category }}</span>
+                {% if runbook.is_dangerous %}
+                    <span class="badge bg-danger">⚠️ COMANDO CRÍTICO</span>
+                {% endif %}
+                {% if runbook.requires_sudo %}
+                    <span class="badge bg-warning text-dark">🔑 REQUIERE SUDO</span>
+                {% endif %}
+            </div>
+            <h3 class="fw-bold mb-0 text-light mt-1">{{ runbook.title }}</h3>
+        </div>
+    </div>
+
+    <div class="d-flex gap-2">
+        <a href="{{ url_for('runbooks.edit_runbook', runbook_id=runbook.id) }}" class="btn btn-outline-info btn-sm">
+            <i class="bi bi-pencil"></i> Editar
+        </a>
+        <form method="POST" action="{{ url_for('runbooks.delete_runbook', runbook_id=runbook.id) }}" onsubmit="return confirm('¿Eliminar este corta-palos?');" class="d-inline">
+            <button type="submit" class="btn btn-outline-danger btn-sm">
+                <i class="bi bi-trash"></i> Eliminar
+            </button>
+        </form>
+    </div>
+</div>
+
+<div class="row g-4">
+    <div class="col-lg-8">
+        <div class="card-custom mb-4">
+            <div class="card-custom-body p-4">
+                {% if runbook.description %}
+                    <h6 class="text-muted fw-semibold mb-2">Descripción del Procedimiento:</h6>
+                    <p class="text-light mb-4">{{ runbook.description }}</p>
+                {% endif %}
+
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <h6 class="text-info fw-semibold mb-0"><i class="bi bi-code-square"></i> Script / Comandos Operativos:</h6>
+                    <button class="btn btn-sm btn-outline-info btn-copy" data-clipboard-text="{{ runbook.command_text }}">
+                        <i class="bi bi-clipboard"></i> Copiar al Portapapeles
+                    </button>
+                </div>
+
+                <div class="terminal-block mb-3">
+                    <div class="terminal-header">
+                        <div class="terminal-dots">
+                            <span class="terminal-dot dot-red"></span>
+                            <span class="terminal-dot dot-yellow"></span>
+                            <span class="terminal-dot dot-green"></span>
+                        </div>
+                        <span class="font-monospace text-muted" style="font-size: 0.75rem;">bash / shell</span>
+                    </div>
+                    <pre class="terminal-content" style="font-size: 0.95rem;">{{ runbook.command_text }}</pre>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-4">
+        <!-- Tarjeta de Metadatos -->
+        <div class="card-custom mb-4">
+            <div class="card-custom-header">
+                <h5 class="mb-0 fw-semibold"><i class="bi bi-info-circle text-info"></i> Información</h5>
+            </div>
+            <div class="card-custom-body">
+                <ul class="list-group list-group-flush bg-transparent">
+                    <li class="list-group-item bg-transparent border-secondary border-opacity-25 px-0 py-2">
+                        <small class="text-muted d-block">Servidor Asociado:</small>
+                        {% if runbook.server %}
+                            <a href="{{ url_for('servers.view_server', server_id=runbook.server.id) }}" class="text-info fw-semibold text-decoration-none">
+                                <i class="bi bi-server"></i> {{ runbook.server.hostname }} ({{ runbook.server.ip_address }})
+                            </a>
+                        {% else %}
+                            <span class="text-light">Procedimiento Genérico (Cualquier host)</span>
+                        {% endif %}
+                    </li>
+                    <li class="list-group-item bg-transparent border-secondary border-opacity-25 px-0 py-2">
+                        <small class="text-muted d-block">Middleware Asociado:</small>
+                        {% if runbook.middleware %}
+                            <span class="text-light fw-semibold">{{ runbook.middleware.name }} ({{ runbook.middleware.version or '' }})</span>
+                        {% else %}
+                            <span class="text-muted">No especificado</span>
+                        {% endif %}
+                    </li>
+                    <li class="list-group-item bg-transparent border-secondary border-opacity-25 px-0 py-2">
+                        <small class="text-muted d-block">Creado Por:</small>
+                        <span class="text-light">{{ runbook.created_by or 'Sysadmin' }}</span>
+                    </li>
+                    <li class="list-group-item bg-transparent border-secondary border-opacity-25 px-0 py-2">
+                        <small class="text-muted d-block">Fecha de Registro:</small>
+                        <span class="text-muted">{{ runbook.created_at.strftime('%d/%m/%Y %H:%M') }}</span>
+                    </li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Historial de Auditoría -->
+        <div class="card-custom">
+            <div class="card-custom-header">
+                <h5 class="mb-0 fw-semibold"><i class="bi bi-clock-history text-info"></i> Control de Cambios</h5>
+            </div>
+            <div class="card-custom-body p-0">
+                <ul class="list-group list-group-flush bg-transparent">
+                    {% for log in audit_history %}
+                    <li class="list-group-item bg-transparent border-secondary border-opacity-25 px-3 py-2">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span class="badge bg-secondary">{{ log.action }}</span>
+                            <small class="text-muted">{{ log.created_at.strftime('%d/%m %H:%M') }}</small>
+                        </div>
+                        <div class="small text-light mt-1">{{ log.summary }}</div>
+                        <div class="d-flex justify-content-between align-items-center mt-1">
+                            <small class="text-muted">Por: {{ log.user_name }}</small>
+                            <button class="btn btn-link btn-sm p-0 text-decoration-none" onclick="showAuditDiff({{ log.id }})">
+                                <small>Diff</small>
+                            </button>
+                        </div>
+                    </li>
+                    {% else %}
+                    <li class="list-group-item bg-transparent text-center py-3 text-muted">Sin cambios auditados.</li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
